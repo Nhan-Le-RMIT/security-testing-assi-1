@@ -1,10 +1,7 @@
-from base64 import b64encode
 import hashlib
-import json
+from base64 import b64encode
 
-from Crypto.Cipher import AES
-from Crypto.Cipher import DES
-from Crypto.Cipher import DES3
+from Crypto.Cipher import AES, DES, DES3
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
 
@@ -42,7 +39,7 @@ def encrypt_des(plaintext):
     plaintext = plaintext.encode("utf-8")
     key = get_random_bytes(8)  # key size: 54 bits
     cipher = DES.new(key, DES.MODE_CBC)
-    ct_bytes = cipher.iv + cipher.encrypt(pad(plaintext, DES.block_size))
+    ct_bytes = bytes(cipher.iv) + cipher.encrypt(pad(plaintext, DES.block_size))  # type: ignore[attr-defined]
     ct = b64encode(ct_bytes).decode("utf-8")
 
     return f"DES({plaintext}): {ct}"
@@ -51,7 +48,7 @@ def encrypt_des(plaintext):
 def encrypt_des3(plaintext):
     while True:
         try:
-            key = DES3.adjust_key_parity(get_random_bytes(24))  # avoid option 3
+            key = DES3.adjust_key_parity(get_random_bytes(24))
             break
         except ValueError:
             pass
@@ -64,9 +61,7 @@ def encrypt_des3(plaintext):
     return f"3DES({plaintext}): {ct}"
 
 
-aes_ct = encrypt_aes256("hello world")
-des_ct = encrypt_des("hello world")
-des3_ct = encrypt_des3("hello world")
-print(aes_ct)
-print(des_ct)
-print(des3_ct)
+with open(
+    r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1KB.json"
+) as file:
+    driver = file.read()

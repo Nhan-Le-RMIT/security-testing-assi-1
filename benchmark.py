@@ -30,21 +30,13 @@ import pandas as pd
 import psutil
 
 try:
-    from Crypto.Cipher import AES
-    from Crypto.Cipher import DES
-    from Crypto.Cipher import PKCS1_OAEP
-    from Crypto.Cipher import ChaCha20
+    from Crypto.Cipher import AES, DES, PKCS1_OAEP, ChaCha20
     from Crypto.Hash import SHA256
-    from Crypto.PublicKey import ECC
-    from Crypto.PublicKey import RSA
-    from Crypto.PublicKey import ElGamal
+    from Crypto.PublicKey import ECC, RSA, ElGamal
     from Crypto.Random import get_random_bytes
-    from Crypto.Signature import DSS
-    from Crypto.Signature import pss
-    from Crypto.Util.number import GCD
-    from Crypto.Util.number import getRandomRange
-    from Crypto.Util.Padding import pad
-    from Crypto.Util.Padding import unpad
+    from Crypto.Signature import DSS, pss
+    from Crypto.Util.number import GCD, getRandomRange
+    from Crypto.Util.Padding import pad, unpad
 except ImportError:
     sys.exit("pycryptodome is not installed. Run: pip install pycryptodome")
 
@@ -70,9 +62,7 @@ SECURITY_BITS = {
     "ChaCha20": 256,
     "RSA-2048": 112,
     "ECC-P256": 128,
-    f"ElGamal-{ELGAMAL_BITS}": {1024: 80, 2048: 112, 3072: 128}.get(
-        ELGAMAL_BITS, ""
-    ),
+    f"ElGamal-{ELGAMAL_BITS}": {1024: 80, 2048: 112, 3072: 128}.get(ELGAMAL_BITS, ""),
 }
 
 proc = psutil.Process()
@@ -138,21 +128,13 @@ def bench_symmetric(data, source):
     suites = [
         (
             "AES-256-CBC",
-            lambda: AES.new(aes_key, AES.MODE_CBC, iv=iv16).encrypt(
-                pad(data, 16)
-            ),
-            lambda ct: unpad(
-                AES.new(aes_key, AES.MODE_CBC, iv=iv16).decrypt(ct), 16
-            ),
+            lambda: AES.new(aes_key, AES.MODE_CBC, iv=iv16).encrypt(pad(data, 16)),
+            lambda ct: unpad(AES.new(aes_key, AES.MODE_CBC, iv=iv16).decrypt(ct), 16),
         ),
         (
             "DES-CBC",
-            lambda: DES.new(des_key, DES.MODE_CBC, iv=iv8).encrypt(
-                pad(data, 8)
-            ),
-            lambda ct: unpad(
-                DES.new(des_key, DES.MODE_CBC, iv=iv8).decrypt(ct), 8
-            ),
+            lambda: DES.new(des_key, DES.MODE_CBC, iv=iv8).encrypt(pad(data, 8)),
+            lambda ct: unpad(DES.new(des_key, DES.MODE_CBC, iv=iv8).decrypt(ct), 8),
         ),
         (
             "ChaCha20",
@@ -206,13 +188,9 @@ def bench_small_block_encryption(keys):
     max_len = 2048 // 8 - 2 * 32 - 2
     msg = get_random_bytes(max_len)
     enc_t, ct = timed(
-        lambda: PKCS1_OAEP.new(rsa_key.publickey(), hashAlgo=SHA256).encrypt(
-            msg
-        )
+        lambda: PKCS1_OAEP.new(rsa_key.publickey(), hashAlgo=SHA256).encrypt(msg)
     )
-    dec_t, pt = timed(
-        lambda: PKCS1_OAEP.new(rsa_key, hashAlgo=SHA256).decrypt(ct)
-    )
+    dec_t, pt = timed(lambda: PKCS1_OAEP.new(rsa_key, hashAlgo=SHA256).decrypt(ct))
     assert pt == msg
     add(
         "asymmetric",
@@ -271,9 +249,7 @@ def bench_signatures(data, source, keys):
 
     # RSA-PSS
     sign_t, sig = timed(lambda: pss.new(rsa_key).sign(SHA256.new(data)))
-    ver_t, _ = timed(
-        lambda: pss.new(rsa_key.publickey()).verify(SHA256.new(data), sig)
-    )
+    ver_t, _ = timed(lambda: pss.new(rsa_key.publickey()).verify(SHA256.new(data), sig))
     add(
         "asymmetric",
         "RSA-2048",
@@ -286,9 +262,7 @@ def bench_signatures(data, source, keys):
     add("asymmetric", "RSA-2048", "verify (PSS)", source, len(data), ver_t)
 
     # ECDSA P-256
-    sign_t, sig = timed(
-        lambda: DSS.new(ecc_key, "fips-186-3").sign(SHA256.new(data))
-    )
+    sign_t, sig = timed(lambda: DSS.new(ecc_key, "fips-186-3").sign(SHA256.new(data)))
     ver_t, _ = timed(
         lambda: DSS.new(ecc_key.public_key(), "fips-186-3").verify(
             SHA256.new(data), sig
@@ -315,9 +289,7 @@ def bench_signatures(data, source, keys):
 
         sign_t, (m, sig) = timed(eg_sign)
         ver_t, ok = timed(
-            lambda: eg._verify(
-                int.from_bytes(SHA256.new(data).digest(), "big"), sig
-            )
+            lambda: eg._verify(int.from_bytes(SHA256.new(data).digest(), "big"), sig)
         )
         assert ok
         add(

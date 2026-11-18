@@ -1,4 +1,5 @@
 import hashlib
+import time
 from base64 import b64encode
 
 from Crypto.Cipher import AES, DES, DES3
@@ -24,15 +25,26 @@ def hash_sha3_256(data):
     return f"SHA3-256({data}): {digest.hexdigest()}"
 
 
-def encrypt_aes256(plaintext):
-    plaintext = plaintext.encode("utf-8")
-    key = get_random_bytes(32)  # key size: 256 bits
-    cipher = AES.new(key, AES.MODE_CBC)
-    ct_bytes = cipher.encrypt(pad(plaintext, AES.block_size))
-    iv = b64encode(cipher.iv).decode("utf-8")
-    ct = b64encode(ct_bytes).decode("utf-8")
+def encrypt_aes256(entries):
+    times = []
+    total_bytes = 0
 
-    return f"AES-256({plaintext}): {ct}"
+    for entry in entries:
+        plaintext = entry.encode("utf-8")
+        total_bytes += len(plaintext)
+        key = get_random_bytes(32)
+
+        start = time.perf_counter()
+        cipher = AES.new(key, AES.MODE_CBC)
+        ct_bytes = cipher.encrypt(pad(plaintext, AES.block_size))
+        times.append(time.perf_counter() - start)
+
+    total = sum(times)
+    return {
+        "avg_per_entry_s": total / len(times),
+        "total_s": total,
+        "throughput_MBps": total_bytes / total / 1e6,
+    }
 
 
 def encrypt_des(plaintext):
@@ -61,7 +73,33 @@ def encrypt_des3(plaintext):
     return f"3DES({plaintext}): {ct}"
 
 
-with open(
-    r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1KB.json"
-) as file:
-    driver = file.read()
+def load_entries(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+print(
+    encrypt_aes256(
+        load_entries(
+            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1KB.jsonl"
+        )
+    )
+)
+
+
+print(
+    encrypt_aes256(
+        load_entries(
+            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1MB.jsonl"
+        )
+    )
+)
+
+
+print(
+    encrypt_aes256(
+        load_entries(
+            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_10MB.jsonl"
+        )
+    )
+)

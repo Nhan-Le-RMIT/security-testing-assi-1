@@ -35,15 +35,15 @@ def generate_record(start_date, end_date):
 
 def generate_dataset(target_bytes):
     start_date, end_date = datetime(2000, 1, 1), datetime(2026, 12, 31)
-    parts, size = [], 2
+    parts, size = [], 0
     while True:
         item = json.dumps(generate_record(start_date, end_date), separators=(",", ":"))
-        extra = len(item) + (1 if parts else 0)
+        extra = len(item) + 1
         if size + extra > target_bytes:
             break
         parts.append(item)
         size += extra
-    data = ("[" + ",".join(parts) + "]").encode("utf-8")
+    data = ("\n".join(parts) + "\n").encode("utf-8")
     return data + b" " * (target_bytes - len(data))
 
 
@@ -53,7 +53,7 @@ def main():
     sizes = {"1KB": 1024, "1MB": 1024**2, "10MB": 10 * 1024**2}
 
     for name, n in sizes.items():
-        write(f"transaction_{name}.json", generate_dataset(n))
+        write(f"transaction_{name}.jsonl", generate_dataset(n))
 
 
 if __name__ == "__main__":

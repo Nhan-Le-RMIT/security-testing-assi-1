@@ -1,8 +1,10 @@
+from base64 import b64encode
 import hashlib
 import time
-from base64 import b64encode
 
-from Crypto.Cipher import AES, DES, DES3
+from Crypto.Cipher import AES
+from Crypto.Cipher import DES
+from Crypto.Cipher import DES3
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
 
@@ -74,7 +76,7 @@ def encrypt_des3(plaintext):
 
 
 def load_entries(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
 

@@ -1,6 +1,7 @@
 from base64 import b64encode
 from functools import wraps
 import hashlib
+import os
 from pathlib import Path
 import time
 
@@ -9,19 +10,19 @@ from Crypto.Cipher import DES
 from Crypto.Cipher import DES3
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
+from cryptography.hazmat.decrepit.ciphers.algorithms import TripleDES
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher as CryptoCipher
+from cryptography.hazmat.primitives.ciphers import algorithms
+from cryptography.hazmat.primitives.ciphers import modes
 
 
 class Cipher:
     def __init__(self, message: str = "hello world") -> None:
         self.message = message.encode("utf-8")
-        self.aes_key = get_random_bytes(32)
-        self.des_key = get_random_bytes(8)
-        while True:
-            try:
-                self.des3_key = DES3.adjust_key_parity(get_random_bytes(24))
-                break
-            except ValueError:
-                pass
+        self.aes_key = os.urandom(32)
+        self.des_key = os.urandom(8)
+        self.des3_key = os.urandom(24)
 
     @staticmethod
     def timer(func):
@@ -84,26 +85,31 @@ class Cipher:
         return hashlib.sha3_256(data).hexdigest()
 
     # Symmetric Encryptions (with IV prepended so each record is decryptable)
-    @timer
-    def encrypt_aes256(self, message: str | bytes | None = None) -> str:
-        data = self._prepare_data(message)
-        cipher = AES.new(self.aes_key, AES.MODE_CBC)
-        ct_bytes = cipher.iv + cipher.encrypt(pad(data, AES.block_size))
-        return b64encode(ct_bytes).decode("utf-8")
+    def _cbc(self, algorithm, block_bits: int, data: bytes) -> bytes:
+        iv = os.urandom(block_bits // 8)
+        padder = padding.PKCS7(block_bits).padder()
+        padded = padder.update(data) + padder.finalize()
+        enc = CryptoCipher(algorithm, modes.CBC(iv)).encryptor()
+        return iv + enc.update(padded) + enc.finalize()
 
     @timer
-    def encrypt_des(self, message: str | bytes | None = None) -> str:
+    def encrypt_aes256(self, message=None) -> str:
         data = self._prepare_data(message)
-        cipher = DES.new(self.des_key, DES.MODE_CBC)
-        ct_bytes = cipher.iv + cipher.encrypt(pad(data, DES.block_size))  # type: ignore[attr-defined]
-        return b64encode(ct_bytes).decode("utf-8")
+        return b64encode(
+            self._cbc(algorithms.AES(self.aes_key), 128, data)
+        ).decode()
 
     @timer
-    def encrypt_des3(self, message: str | bytes | None = None) -> str:
+    def encrypt_des(self, message=None) -> str:
         data = self._prepare_data(message)
-        cipher = DES3.new(self.des3_key, DES3.MODE_CBC)
-        ct_bytes = cipher.iv + cipher.encrypt(pad(data, DES3.block_size))  # type: ignore[attr-defined]
-        return b64encode(ct_bytes).decode("utf-8")
+        return b64encode(
+            self._cbc(TripleDES(self.des_key * 3), 64, data)
+        ).decode()
+
+    @timer
+    def encrypt_des3(self, message=None) -> str:
+        data = self._prepare_data(message)
+        return b64encode(self._cbc(TripleDES(self.des3_key), 64, data)).decode()
 
     # Helpers
     def _prepare_data(self, message: str | bytes | None) -> bytes:

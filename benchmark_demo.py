@@ -25,25 +25,19 @@ def hash_sha3_256(data):
     return f"SHA3-256({data}): {digest.hexdigest()}"
 
 
-def encrypt_aes256(entries):
-    times = []
-    total_bytes = 0
+def encrypt_aes256(plaintext: bytes):
+    key = get_random_bytes(32)  # 256-bit key
+    padded = pad(plaintext, AES.block_size)
 
-    for entry in entries:
-        plaintext = entry.encode("utf-8")
-        total_bytes += len(plaintext)
-        key = get_random_bytes(32)
+    start = time.perf_counter()
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(padded)
+    elapsed = time.perf_counter() - start
 
-        start = time.perf_counter()
-        cipher = AES.new(key, AES.MODE_CBC)
-        ct_bytes = cipher.encrypt(pad(plaintext, AES.block_size))
-        times.append(time.perf_counter() - start)
-
-    total = sum(times)
     return {
-        "avg_per_entry_s": total / len(times),
-        "total_s": total,
-        "throughput_MBps": total_bytes / total / 1e6,
+        "total_s": elapsed,
+        "throughput_MBps": len(plaintext) / elapsed / 1e6,
+        "ciphertext_bytes": len(ct_bytes),
     }
 
 
@@ -74,32 +68,28 @@ def encrypt_des3(plaintext):
 
 
 def load_entries(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "rb") as f:
         return [line.strip() for line in f if line.strip()]
 
 
-print(
-    encrypt_aes256(
-        load_entries(
-            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1KB.jsonl"
-        )
-    )
-)
+times = []
 
+BASE = r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset"
 
-print(
-    encrypt_aes256(
-        load_entries(
-            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_1MB.jsonl"
-        )
-    )
-)
+datasets = {
+    "1KB": load_entries(rf"{BASE}\transaction_1KB.jsonl"),
+    "1MB": load_entries(rf"{BASE}\transaction_1MB.jsonl"),
+    "10MB": load_entries(rf"{BASE}\transaction_10MB.jsonl"),
+}
 
+ATTEMPTS = 10
 
-print(
-    encrypt_aes256(
-        load_entries(
-            r"C:\Users\admin\Devs\RMIT\Security Testing\security-testing-assi-1\dataset\transaction_10MB.jsonl"
-        )
-    )
-)
+for size, entries in datasets.items():
+    encrypt_aes256(entries)  # warm-up run, discarded
+
+    totals = []
+    for _ in range(RUNS):
+        result = encrypt_aes256(entries)
+        totals.append(result["total_s"])
+
+    print(f"{name}: avg total over {RUNS} runs = {sum(totals) / RUNS:.6f} s")

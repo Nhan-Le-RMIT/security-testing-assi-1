@@ -57,7 +57,12 @@ def generate_dataset(target_bytes: int) -> bytes:
 def main() -> None:
     write("secret_exchange.txt", b"BankSessionSecret2026!#")
 
-    sizes: dict[str, int] = {"1KB": 1024, "1MB": 1024**2, "10MB": 10 * 1024**2}
+    sizes: dict[str, int] = {
+        "1KB": 1024,
+        "1MB": 1024**2,
+        "10MB": 10 * 1024**2,
+        "100MB": 100 * 1024**2,
+    }
 
     for name, n in sizes.items():
         write(f"transaction_{name}.jsonl", generate_dataset(n))
